@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Passphrase Generator (2 words)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        background: #1e1e2f;
+        color: #eee;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        margin: 0;
+      }
+      .container {
+        max-width: 600px;
+        width: 100%;
+        background: #2a2a3e;
+        border-radius: 24px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        text-align: center;
+      }
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+      }
+      .word-display {
+        font-size: 3rem;
+        font-weight: bold;
+        background: #3b3b55;
+        padding: 30px 10px;
+        border-radius: 16px;
+        margin: 20px 0;
+        word-break: break-word;
+      }
+      .basket-info {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        color: #aaa;
+      }
+      .btn-group {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 15px 0;
+      }
+      .btn {
+        padding: 14px 24px;
+        font-size: 1.2rem;
+        border: none;
+        border-radius: 60px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s;
+        min-width: 100px;
+      }
+      .btn:active {
+        transform: scale(0.95);
+      }
+      .btn-y {
+        background: #4caf50;
+        color: #fff;
+      }
+      .btn-y:hover {
+        background: #45a049;
+      }
+      .btn-n {
+        background: #f44336;
+        color: #fff;
+      }
+      .btn-n:hover {
+        background: #d32f2f;
+      }
+      .btn-r {
+        background: #ff9800;
+        color: #fff;
+      }
+      .btn-r:hover {
+        background: #fb8c00;
+      }
+      .btn-b {
+        background: #42a5f5;
+        color: #fff;
+      } /* Back button blue */
+      .btn-b:hover {
+        background: #1e88e5;
+      }
+      .btn-reset {
+        background: #607d8b;
+        color: #fff;
+      }
+      .btn-reset:hover {
+        background: #546e7a;
+      }
+      .result-box {
+        margin-top: 25px;
+        padding: 20px;
+        background: #1e1e2f;
+        border-radius: 16px;
+        border: 2px solid #4caf50;
+      }
+      .passphrase {
+        font-size: 1.8rem;
+        font-weight: bold;
+        word-break: break-all;
+        color: #8bc34a;
+      }
+      .history {
+        margin-top: 25px;
+        text-align: left;
+        max-height: 200px;
+        overflow-y: auto;
+        background: #1e1e2f;
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        color: #bbb;
+      }
+      .history-item {
+        padding: 5px 0;
+        border-bottom: 1px solid #333;
+      }
+      .history-item:last-child {
+        border-bottom: none;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 0.8rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔐 Passphrase Generator</h1>
+      <div class="basket-info">
+        📦 <span id="basketCount">0</span> / 2 words selected
+      </div>
+
+      <div class="word-display" id="wordDisplay">Ready</div>
+
+      <div class="btn-group">
+        <button class="btn btn-y" id="btnAdd">👍 Add</button>
+        <button class="btn btn-n" id="btnSkip">👎 Skip</button>
+        <button class="btn btn-b" id="btnBack">⬅ Back</button>
+        <button class="btn btn-r" id="btnRestart">🔄 Restart</button>
+      </div>
+
+      <div id="resultArea" class="result-box" style="display: none">
+        <div>✅ Your passphrase:</div>
+        <div class="passphrase" id="passphraseText"></div>
+        <div style="margin-top: 10px; font-size: 0.9rem; color: #aaa">
+          📋 Copied to clipboard automatically!
+        </div>
+        <button class="btn btn-reset" id="btnNew" style="margin-top: 15px">
+          🔄 Make another one
+        </button>
+      </div>
+
+      <div class="history" id="historyBox">
+        <div style="font-weight: bold; margin-bottom: 8px">
+          📜 History (last 20)
+        </div>
+        <div id="historyList"></div>
+      </div>
+      <div class="footer">💾 History saved in your browser (localStorage).</div>
+    </div>
+    <script src="words.js"></script>
+    <script>
+      // -----------------------------------------------------------------
+      // Built‑in word list (200+ common words) – change these if you want
+      // -----------------------------------------------------------------
+
+      // State
+      let allWords = [];
+      let shuffled = [];
+      let basket = [];
+      let currentIndex = 0;
+      let isFinished = false;
+
+      // DOM refs
+      const wordDisplay = document.getElementById("wordDisplay");
+      const basketCount = document.getElementById("basketCount");
+      const resultArea = document.getElementById("resultArea");
+      const passphraseText = document.getElementById("passphraseText");
+      const historyList = document.getElementById("historyList");
+      const btnAdd = document.getElementById("btnAdd");
+      const btnSkip = document.getElementById("btnSkip");
+      const btnBack = document.getElementById("btnBack");
+      const btnRestart = document.getElementById("btnRestart");
+      const btnNew = document.getElementById("btnNew");
+
+      // -----------------------------------------------------------------
+      // Helpers
+      // -----------------------------------------------------------------
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function pickSymbol() {
+        return ["@", "#", "!"][Math.floor(Math.random() * 3)];
+      }
+
+      function pickNumber() {
+        const digits = Math.random() < 0.5 ? 3 : 4;
+        const min = Math.pow(10, digits - 1);
+        const max = Math.pow(10, digits) - 1;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function generatePassphrase(words) {
+        const capped = words.map(
+          (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+        );
+        const base = capped.join(".");
+        return base + pickSymbol() + pickNumber();
+      }
+
+      // -----------------------------------------------------------------
+      // History (localStorage)
+      // -----------------------------------------------------------------
+      function getHistory() {
+        try {
+          return JSON.parse(localStorage.getItem("passphraseHistory")) || [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveHistory(entry) {
+        const hist = getHistory();
+        hist.unshift(entry);
+        if (hist.length > 20) hist.pop();
+        localStorage.setItem("passphraseHistory", JSON.stringify(hist));
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const hist = getHistory();
+        if (hist.length === 0) {
+          historyList.innerHTML =
+            '<div style="color:#666;">No passwords saved yet.</div>';
+          return;
+        }
+        historyList.innerHTML = hist
+          .map((item) => `<div class="history-item">${item}</div>`)
+          .join("");
+      }
+
+      // -----------------------------------------------------------------
+      // Clipboard copy
+      // -----------------------------------------------------------------
+      function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(() => {});
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+      }
+
+      // -----------------------------------------------------------------
+      // Game logic
+      // -----------------------------------------------------------------
+      function startGame() {
+        allWords = DEFAULT_WORDS.slice();
+        shuffled = shuffle(allWords.slice());
+        basket = [];
+        currentIndex = 0;
+        isFinished = false;
+
+        resultArea.style.display = "none";
+        btnAdd.disabled = false;
+        btnSkip.disabled = false;
+        btnBack.disabled = false;
+        btnRestart.disabled = false;
+
+        renderWord();
+        updateBasket();
+      }
+
+      function renderWord() {
+        if (isFinished) return;
+        if (currentIndex >= shuffled.length) {
+          alert("Ran out of words! Restarting...");
+          startGame();
+          return;
+        }
+        wordDisplay.textContent = shuffled[currentIndex];
+      }
+
+      function updateBasket() {
+        basketCount.textContent = basket.length;
+      }
+
+      function addWord() {
+        if (isFinished) return;
+        const word = shuffled[currentIndex];
+        // Avoid duplicate adds (just in case)
+        if (!basket.includes(word)) {
+          basket.push(word);
+        }
+        updateBasket();
+
+        if (basket.length === 2) {
+          finishGame();
+        } else {
+          currentIndex++;
+          renderWord();
+        }
+      }
+
+      function skipWord() {
+        if (isFinished) return;
+        currentIndex++;
+        renderWord();
+      }
+
+      // **** NEW: Go back one word (undo skip) ****
+      function goBack() {
+        if (isFinished) return;
+        if (currentIndex > 0) {
+          currentIndex--;
+          renderWord();
+        } else {
+          // Optional: little feedback
+          wordDisplay.textContent = "👀 Already at the start!";
+          setTimeout(() => renderWord(), 500);
+        }
+      }
+
+      function finishGame() {
+        isFinished = true;
+        btnAdd.disabled = true;
+        btnSkip.disabled = true;
+        btnBack.disabled = true;
+        btnRestart.disabled = true;
+
+        const passphrase = generatePassphrase(basket);
+        passphraseText.textContent = passphrase;
+        resultArea.style.display = "block";
+
+        copyToClipboard(passphrase);
+
+        const now = new Date();
+        const ts = now.toLocaleString("en-US", { hour12: false });
+        const entry = `[${ts}] ${passphrase}`;
+        saveHistory(entry);
+      }
+
+      function restartGame() {
+        startGame();
+      }
+
+      // -----------------------------------------------------------------
+      // Event listeners
+      // -----------------------------------------------------------------
+      btnAdd.addEventListener("click", addWord);
+      btnSkip.addEventListener("click", skipWord);
+      btnBack.addEventListener("click", goBack);
+      btnRestart.addEventListener("click", restartGame);
+      btnNew.addEventListener("click", startGame);
+
+      // Keyboard shortcuts: y=add, n=skip, b=back, r=restart
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "y" || e.key === "Y") btnAdd.click();
+        else if (e.key === "n" || e.key === "N") btnSkip.click();
+        else if (e.key === "b" || e.key === "B") btnBack.click();
+        else if (e.key === "r" || e.key === "R") btnRestart.click();
+      });
+
+      // -----------------------------------------------------------------
+      // Bootstrap
+      // -----------------------------------------------------------------
+      renderHistory();
+      startGame();
+    </script>
+  </body>
+</html>
